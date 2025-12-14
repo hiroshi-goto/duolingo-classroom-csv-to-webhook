@@ -6,3 +6,5 @@ screenshots/
 downloads/
 *.csv
 duolingo-session.txt
+.chrome-profile/
+.playwright-profile/
