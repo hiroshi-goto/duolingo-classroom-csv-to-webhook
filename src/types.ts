@@ -22,6 +22,7 @@ export interface ExportData {
 export interface Config {
   duolingoSession: string;
   webhookUrl: string;
+  difyApiKey?: string;
   className: string;
   classroomId: string;
   headless: boolean;

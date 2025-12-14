@@ -5,7 +5,8 @@ import { Config } from './types';
 
 function getConfig(): Config {
   const duolingoSession = process.env.DUOLINGO_SESSION;
-  const webhookUrl = process.env.WEBHOOK_URL;
+  const webhookUrl = process.env.WEBHOOK_URL || '';
+  const difyApiKey = process.env.DIFY_API_KEY;
   const className = process.env.CLASSROOM_NAME;
   const classroomId = process.env.CLASSROOM_ID;
   const headless = process.env.HEADLESS !== 'false';
@@ -13,8 +14,8 @@ function getConfig(): Config {
   if (!duolingoSession) {
     throw new Error('DUOLINGO_SESSION environment variable is required');
   }
-  if (!webhookUrl) {
-    throw new Error('WEBHOOK_URL environment variable is required');
+  if (!webhookUrl && !difyApiKey) {
+    throw new Error('WEBHOOK_URL or DIFY_API_KEY environment variable is required');
   }
   if (!className) {
     throw new Error('CLASSROOM_NAME environment variable is required');
@@ -26,6 +27,7 @@ function getConfig(): Config {
   return {
     duolingoSession,
     webhookUrl,
+    difyApiKey,
     className,
     classroomId,
     headless,
@@ -49,9 +51,9 @@ async function main(): Promise<void> {
     const exportData = parseCSV(csvPath);
     console.log(`  -> ${exportData.members.length} members found`);
 
-    // Step 3: POST to Webhook
+    // Step 3: POST to Webhook/Dify
     console.log('[3/3] Posting to Webhook...');
-    await postToWebhook(config.webhookUrl, exportData);
+    await postToWebhook(config.webhookUrl, exportData, config.difyApiKey);
 
     console.log('\nDone!');
 
