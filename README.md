@@ -14,16 +14,20 @@ Duolingo Classroom の Activity Report CSV を自動ダウンロードし、JSON
 
 ### 1. セッション情報の取得
 
-ローカルの Chrome で既にログイン済みの場合、そのセッション情報を取得できます。
+#### 手順
 
-```bash
-npm install
-npm run save-auth
-```
-
-**注意**: 実行前に Chrome を閉じてください。
-
-Chrome が起動し、既にログイン済みであれば自動的にセッション情報が `duolingo-session.txt` に保存されます。
+1. Chrome を完全に終了
+2. ターミナルでデバッグモードで Chrome を起動:
+   ```bash
+   google-chrome --remote-debugging-port=9222
+   ```
+3. ブラウザで https://schools.duolingo.com にログイン
+4. 別のターミナルで:
+   ```bash
+   npm install
+   npm run save-auth
+   ```
+5. Enter を押すとセッション情報が `duolingo-session.txt` に保存されます
 
 ### 2. GitHub Secrets の設定
 
