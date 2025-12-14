@@ -21,6 +21,7 @@ Duolingo Classroom の Activity Report CSV を自動ダウンロードし、JSON
 | `GOOGLE_EMAIL` | Google アカウントのメールアドレス |
 | `GOOGLE_PASSWORD` | Google アカウントのパスワード |
 | `WEBHOOK_URL` | データを POST する Webhook URL |
+| `CLASS_NAME` | Duolingo Classroom のクラス名 |
 
 ### 2. Google アカウントの準備
 
@@ -59,7 +60,7 @@ npm run build
 export GOOGLE_EMAIL="your-email@gmail.com"
 export GOOGLE_PASSWORD="your-password"
 export WEBHOOK_URL="https://your-webhook-url.com/endpoint"
-export CLASS_NAME="GotoFamily"  # オプション（デフォルト: GotoFamily）
+export CLASS_NAME="YourClassName"  # クラス名
 export HEADLESS="true"          # オプション（デフォルト: true）
 
 npm start

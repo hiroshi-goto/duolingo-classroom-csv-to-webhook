@@ -7,7 +7,7 @@ function getConfig(): Config {
   const googleEmail = process.env.GOOGLE_EMAIL;
   const googlePassword = process.env.GOOGLE_PASSWORD;
   const webhookUrl = process.env.WEBHOOK_URL;
-  const className = process.env.CLASS_NAME || 'GotoFamily';
+  const className = process.env.CLASS_NAME;
   const headless = process.env.HEADLESS !== 'false';
 
   if (!googleEmail) {
@@ -18,6 +18,9 @@ function getConfig(): Config {
   }
   if (!webhookUrl) {
     throw new Error('WEBHOOK_URL environment variable is required');
+  }
+  if (!className) {
+    throw new Error('CLASS_NAME environment variable is required');
   }
 
   return {

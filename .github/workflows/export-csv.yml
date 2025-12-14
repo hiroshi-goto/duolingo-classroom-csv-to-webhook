@@ -36,7 +36,7 @@ jobs:
           GOOGLE_EMAIL: ${{ secrets.GOOGLE_EMAIL }}
           GOOGLE_PASSWORD: ${{ secrets.GOOGLE_PASSWORD }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-          CLASS_NAME: 'GotoFamily'
+          CLASS_NAME: ${{ secrets.CLASS_NAME }}
           HEADLESS: 'true'
         run: npm start
 
