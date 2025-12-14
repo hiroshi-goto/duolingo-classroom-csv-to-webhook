@@ -34,7 +34,7 @@ jobs:
       - name: Run export script
         env:
           DUOLINGO_SESSION: ${{ secrets.DUOLINGO_SESSION }}
-          DIFY_API_KEY: ${{ secrets.DIFY_API_KEY }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           CLASSROOM_NAME: ${{ secrets.CLASSROOM_NAME }}
           CLASSROOM_ID: ${{ secrets.CLASSROOM_ID }}
           HEADLESS: 'true'
