@@ -1,11 +1,7 @@
-import { chromium } from 'playwright-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Config } from './types';
-
-// Apply stealth plugin
-chromium.use(StealthPlugin());
 
 const DUOLINGO_LOGIN_URL = 'https://schools.duolingo.com/login';
 
@@ -18,7 +14,7 @@ async function randomDelay(min: number, max: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function humanType(page: any, selector: string, text: string): Promise<void> {
+async function humanType(page: Page, selector: string, text: string): Promise<void> {
   await page.click(selector);
   await randomDelay(300, 600);
   for (const char of text) {
@@ -26,7 +22,7 @@ async function humanType(page: any, selector: string, text: string): Promise<voi
   }
 }
 
-async function saveScreenshot(page: any, name: string, config: Config): Promise<void> {
+async function saveScreenshot(page: Page, name: string, config: Config): Promise<void> {
   const screenshotPath = path.join(config.screenshotDir, `${name}-${Date.now()}.png`);
   await page.screenshot({ path: screenshotPath, fullPage: true });
 }
@@ -39,7 +35,7 @@ export async function downloadActivityReportCSV(config: Config): Promise<string>
     fs.mkdirSync(config.downloadDir, { recursive: true });
   }
 
-  const browser = await chromium.launch({
+  const browser: Browser = await chromium.launch({
     headless: config.headless,
     args: [
       '--disable-blink-features=AutomationControlled',
@@ -49,18 +45,23 @@ export async function downloadActivityReportCSV(config: Config): Promise<string>
     ],
   });
 
-  const context = await browser.newContext({
+  const context: BrowserContext = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     viewport: { width: 1920, height: 1080 },
     locale: 'ja-JP',
     timezoneId: 'Asia/Tokyo',
   });
 
-  const page = await context.newPage();
+  const page: Page = await context.newPage();
+
+  // Remove navigator.webdriver detection
+  await page.addInitScript(`
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+  `);
 
   try {
     // Login page
-    await page.goto(DUOLINGO_LOGIN_URL, { waitUntil: 'networkidle' });
+    await page.goto(DUOLINGO_LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await randomDelay(2000, 4000);
     await saveScreenshot(page, '01-login-page', config);
 
@@ -73,6 +74,11 @@ export async function downloadActivityReportCSV(config: Config): Promise<string>
       context.waitForEvent('page'),
       googleButton.click(),
     ]);
+
+    // Apply stealth to popup as well
+    await popup.addInitScript(`
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    `);
 
     await randomDelay(2000, 4000);
     await popup.screenshot({ path: path.join(config.screenshotDir, `02-google-popup-${Date.now()}.png`), fullPage: true });
@@ -114,7 +120,7 @@ export async function downloadActivityReportCSV(config: Config): Promise<string>
       await classLink.click();
       await randomDelay(3000, 5000);
     } catch {
-      await page.goto(`https://schools.duolingo.com/classroom`, { waitUntil: 'networkidle' });
+      await page.goto(`https://schools.duolingo.com/classroom`, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await randomDelay(2000, 4000);
       const classLinkRetry = page.locator(`text="${config.className}"`);
       await randomDelay(300, 800);
