@@ -4,7 +4,7 @@ Duolingo Classroom の Activity Report CSV を自動ダウンロードし、JSON
 
 ## 機能
 
-- Google OAuth を使用して Duolingo Classroom にログイン
+- セッション情報を使用して Duolingo Classroom にアクセス
 - 指定したクラスの Activity Report CSV をダウンロード
 - CSV を JSON 形式に変換
 - Webhook URL に POST
@@ -12,27 +12,48 @@ Duolingo Classroom の Activity Report CSV を自動ダウンロードし、JSON
 
 ## セットアップ
 
-### 1. GitHub Secrets の設定
+### 1. セッション情報の取得
+
+ローカル環境でブラウザを起動し、Google でログインしてセッション情報を保存します。
+
+```bash
+npm install
+npx playwright install chromium
+npm run save-auth
+```
+
+ブラウザが起動したら:
+1. 「Sign in with Google」をクリック
+2. Google アカウントでログイン
+3. Duolingo Schools のダッシュボードが表示されたら、ターミナルで Enter を押す
+
+`duolingo-session.txt` が生成されます。
+
+### 2. GitHub Secrets の設定
 
 リポジトリの Settings → Secrets and variables → Actions で以下の Secrets を設定してください：
 
 | Secret 名 | 説明 |
 |-----------|------|
-| `GOOGLE_EMAIL` | Google アカウントのメールアドレス |
-| `GOOGLE_PASSWORD` | Google アカウントのパスワード |
+| `DUOLINGO_SESSION` | `duolingo-session.txt` の内容 |
 | `WEBHOOK_URL` | データを POST する Webhook URL |
 | `CLASS_NAME` | Duolingo Classroom のクラス名 |
 
-### 2. Google アカウントの準備
+gh コマンドで設定する場合:
 
-**重要**: Google アカウントで以下の設定が必要な場合があります：
-
-1. **2段階認証が有効な場合**: アプリパスワードを生成して `GOOGLE_PASSWORD` に設定
-2. **「安全性の低いアプリのアクセス」**: 有効にする（非推奨、可能ならアプリパスワードを使用）
+```bash
+gh secret set DUOLINGO_SESSION < duolingo-session.txt
+gh secret set WEBHOOK_URL
+gh secret set CLASS_NAME
+```
 
 ### 3. 手動実行
 
 GitHub Actions の「Actions」タブから「Export Duolingo Classroom CSV」ワークフローを選択し、「Run workflow」ボタンで手動実行できます。
+
+## セッションの更新
+
+セッション情報は有効期限があります。ログインが失敗した場合は、再度 `npm run save-auth` を実行してセッション情報を更新してください。
 
 ## ローカル実行
 
@@ -57,11 +78,10 @@ npm run build
 ### 実行
 
 ```bash
-export GOOGLE_EMAIL="your-email@gmail.com"
-export GOOGLE_PASSWORD="your-password"
+export DUOLINGO_SESSION="$(cat duolingo-session.txt)"
 export WEBHOOK_URL="https://your-webhook-url.com/endpoint"
-export CLASS_NAME="YourClassName"  # クラス名
-export HEADLESS="true"          # オプション（デフォルト: true）
+export CLASS_NAME="YourClassName"
+export HEADLESS="true"  # オプション（デフォルト: true）
 
 npm start
 ```
@@ -99,11 +119,11 @@ GitHub Actions は毎日 07:50 UTC（= 16:50 JST）に実行されます。
 
 ## トラブルシューティング
 
-### ログイン失敗
+### セッション期限切れ
 
-1. **Secrets の確認**: GOOGLE_EMAIL と GOOGLE_PASSWORD が正しく設定されているか確認
-2. **2段階認証**: 有効な場合はアプリパスワードを使用
-3. **スクリーンショット**: ワークフロー失敗時は Artifacts からスクリーンショットをダウンロードして確認
+「Session expired」エラーが表示された場合:
+1. ローカルで `npm run save-auth` を実行
+2. `duolingo-session.txt` の内容を `DUOLINGO_SESSION` Secret に再設定
 
 ### ダウンロード失敗
 
@@ -123,7 +143,8 @@ GitHub Actions は毎日 07:50 UTC（= 16:50 JST）に実行されます。
 │   └── export-csv.yml    # GitHub Actions ワークフロー
 ├── src/
 │   ├── index.ts          # メインエントリポイント
-│   ├── duolingo.ts       # Duolingo ログイン・ダウンロード
+│   ├── duolingo.ts       # Duolingo アクセス・ダウンロード
+│   ├── save-auth.ts      # セッション情報保存スクリプト
 │   ├── csv-parser.ts     # CSV パーサー
 │   ├── webhook.ts        # Webhook POST
 │   └── types.ts          # 型定義
@@ -135,8 +156,7 @@ GitHub Actions は毎日 07:50 UTC（= 16:50 JST）に実行されます。
 ## 注意事項
 
 - このツールは Playwright を使用したブラウザ自動化を行います
-- Google のボット検出により、ログインがブロックされる場合があります
-- 本番環境では適切な認証方法（アプリパスワード等）を使用してください
+- セッション情報には認証情報が含まれます。安全に管理してください
 - Duolingo の利用規約に従ってご使用ください
 
 ## ライセンス

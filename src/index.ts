@@ -4,17 +4,13 @@ import { postToWebhook } from './webhook';
 import { Config } from './types';
 
 function getConfig(): Config {
-  const googleEmail = process.env.GOOGLE_EMAIL;
-  const googlePassword = process.env.GOOGLE_PASSWORD;
+  const duolingoSession = process.env.DUOLINGO_SESSION;
   const webhookUrl = process.env.WEBHOOK_URL;
   const className = process.env.CLASS_NAME;
   const headless = process.env.HEADLESS !== 'false';
 
-  if (!googleEmail) {
-    throw new Error('GOOGLE_EMAIL environment variable is required');
-  }
-  if (!googlePassword) {
-    throw new Error('GOOGLE_PASSWORD environment variable is required');
+  if (!duolingoSession) {
+    throw new Error('DUOLINGO_SESSION environment variable is required');
   }
   if (!webhookUrl) {
     throw new Error('WEBHOOK_URL environment variable is required');
@@ -24,8 +20,7 @@ function getConfig(): Config {
   }
 
   return {
-    googleEmail,
-    googlePassword,
+    duolingoSession,
     webhookUrl,
     className,
     headless,

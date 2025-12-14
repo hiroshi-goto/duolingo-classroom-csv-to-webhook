@@ -20,8 +20,7 @@ export interface ExportData {
 }
 
 export interface Config {
-  googleEmail: string;
-  googlePassword: string;
+  duolingoSession: string;
   webhookUrl: string;
   className: string;
   headless: boolean;

@@ -33,8 +33,7 @@ jobs:
 
       - name: Run export script
         env:
-          GOOGLE_EMAIL: ${{ secrets.GOOGLE_EMAIL }}
-          GOOGLE_PASSWORD: ${{ secrets.GOOGLE_PASSWORD }}
+          DUOLINGO_SESSION: ${{ secrets.DUOLINGO_SESSION }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           CLASS_NAME: ${{ secrets.CLASS_NAME }}
           HEADLESS: 'true'
