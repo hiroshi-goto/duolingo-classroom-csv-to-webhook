@@ -14,20 +14,16 @@ Duolingo Classroom の Activity Report CSV を自動ダウンロードし、JSON
 
 ### 1. セッション情報の取得
 
-ローカル環境でブラウザを起動し、Google でログインしてセッション情報を保存します。
+ローカルの Chrome で既にログイン済みの場合、そのセッション情報を取得できます。
 
 ```bash
 npm install
-npx playwright install chromium
 npm run save-auth
 ```
 
-ブラウザが起動したら:
-1. 「Sign in with Google」をクリック
-2. Google アカウントでログイン
-3. Duolingo Schools のダッシュボードが表示されたら、ターミナルで Enter を押す
+**注意**: 実行前に Chrome を閉じてください。
 
-`duolingo-session.txt` が生成されます。
+Chrome が起動し、既にログイン済みであれば自動的にセッション情報が `duolingo-session.txt` に保存されます。
 
 ### 2. GitHub Secrets の設定
 
@@ -66,7 +62,6 @@ GitHub Actions の「Actions」タブから「Export Duolingo Classroom CSV」�
 
 ```bash
 npm install
-npx playwright install chromium --with-deps
 ```
 
 ### ビルド

@@ -1,58 +1,93 @@
 import { chromium } from 'playwright';
 import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
-const DUOLINGO_LOGIN_URL = 'https://schools.duolingo.com/login';
+function getChromeUserDataDir(): string {
+  const platform = os.platform();
+  const home = os.homedir();
+
+  switch (platform) {
+    case 'darwin':
+      return path.join(home, 'Library', 'Application Support', 'Google', 'Chrome');
+    case 'win32':
+      return path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'User Data');
+    case 'linux':
+      return path.join(home, '.config', 'google-chrome');
+    default:
+      throw new Error(`Unsupported platform: ${platform}`);
+  }
+}
+
+function getChromeExecutable(): string {
+  const platform = os.platform();
+
+  switch (platform) {
+    case 'darwin':
+      return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    case 'win32':
+      return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    case 'linux':
+      return '/usr/bin/google-chrome';
+    default:
+      throw new Error(`Unsupported platform: ${platform}`);
+  }
+}
 
 async function saveAuth(): Promise<void> {
   console.log('[Duolingo Session Saver]');
-  console.log('ブラウザを起動します。Googleでログインしてください。\n');
+  console.log('ローカルの Chrome からセッション情報を取得します...\n');
 
-  const browser = await chromium.launch({
-    headless: false,
-    args: ['--window-size=1280,800'],
-  });
+  const userDataDir = getChromeUserDataDir();
+  const executablePath = getChromeExecutable();
 
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-  });
-
-  const page = await context.newPage();
-
-  await page.goto(DUOLINGO_LOGIN_URL);
-
-  console.log('ログイン後、Duolingo Schools のダッシュボードが表示されたら Enter を押してください...');
-
-  // Wait for user input
-  await new Promise<void>((resolve) => {
-    process.stdin.once('data', () => resolve());
-  });
-
-  // Check if logged in
-  const url = page.url();
-  if (!url.includes('schools.duolingo.com')) {
-    console.error('エラー: Duolingo Schools にログインできていません。');
-    await browser.close();
+  if (!fs.existsSync(userDataDir)) {
+    console.error(`Chrome プロファイルが見つかりません: ${userDataDir}`);
     process.exit(1);
   }
 
-  // Save storage state
-  const storageState = await context.storageState();
-  const sessionJson = JSON.stringify(storageState);
-  const sessionBase64 = Buffer.from(sessionJson).toString('base64');
+  console.log(`Chrome プロファイル: ${userDataDir}`);
+  console.log('注意: Chrome を閉じてから実行してください。\n');
 
-  // Save to file
-  fs.writeFileSync('duolingo-session.txt', sessionBase64);
+  const browser = await chromium.launchPersistentContext(userDataDir, {
+    headless: false,
+    executablePath,
+    channel: 'chrome',
+    args: ['--profile-directory=Default'],
+  });
 
-  console.log('\n✓ セッション情報を保存しました: duolingo-session.txt');
-  console.log('\n次のステップ:');
-  console.log('1. GitHub リポジトリの Settings > Secrets > Actions に移動');
-  console.log('2. "New repository secret" をクリック');
-  console.log('3. Name: DUOLINGO_SESSION');
-  console.log('4. Value: duolingo-session.txt の内容を貼り付け');
-  console.log('\nまたは gh コマンドで設定:');
-  console.log('gh secret set DUOLINGO_SESSION < duolingo-session.txt');
+  const page = await browser.newPage();
 
-  await browser.close();
+  try {
+    await page.goto('https://schools.duolingo.com/classroom');
+    await page.waitForTimeout(3000);
+
+    // Check if logged in
+    if (page.url().includes('/login')) {
+      console.log('Duolingo にログインしていません。');
+      console.log('ブラウザでログインして、Enter を押してください...');
+      await new Promise<void>((resolve) => {
+        process.stdin.once('data', () => resolve());
+      });
+    }
+
+    // Wait for dashboard
+    await page.waitForURL(/schools\.duolingo\.com/, { timeout: 60000 });
+
+    // Get storage state
+    const storageState = await browser.storageState();
+    const sessionJson = JSON.stringify(storageState);
+    const sessionBase64 = Buffer.from(sessionJson).toString('base64');
+
+    fs.writeFileSync('duolingo-session.txt', sessionBase64);
+
+    console.log('\n✓ セッション情報を保存しました: duolingo-session.txt');
+    console.log('\n設定方法:');
+    console.log('gh secret set DUOLINGO_SESSION < duolingo-session.txt');
+
+  } finally {
+    await browser.close();
+  }
 }
 
 saveAuth().catch(console.error);
