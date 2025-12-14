@@ -6,7 +6,8 @@ import { Config } from './types';
 function getConfig(): Config {
   const duolingoSession = process.env.DUOLINGO_SESSION;
   const webhookUrl = process.env.WEBHOOK_URL;
-  const className = process.env.CLASS_NAME;
+  const className = process.env.CLASSROOM_NAME;
+  const classroomId = process.env.CLASSROOM_ID;
   const headless = process.env.HEADLESS !== 'false';
 
   if (!duolingoSession) {
@@ -16,13 +17,17 @@ function getConfig(): Config {
     throw new Error('WEBHOOK_URL environment variable is required');
   }
   if (!className) {
-    throw new Error('CLASS_NAME environment variable is required');
+    throw new Error('CLASSROOM_NAME environment variable is required');
+  }
+  if (!classroomId) {
+    throw new Error('CLASSROOM_ID environment variable is required');
   }
 
   return {
     duolingoSession,
     webhookUrl,
     className,
+    classroomId,
     headless,
     screenshotDir: process.env.SCREENSHOT_DIR || './screenshots',
     downloadDir: process.env.DOWNLOAD_DIR || './downloads',

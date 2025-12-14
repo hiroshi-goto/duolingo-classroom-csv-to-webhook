@@ -23,6 +23,7 @@ export interface Config {
   duolingoSession: string;
   webhookUrl: string;
   className: string;
+  classroomId: string;
   headless: boolean;
   screenshotDir: string;
   downloadDir: string;

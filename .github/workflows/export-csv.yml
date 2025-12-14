@@ -35,7 +35,8 @@ jobs:
         env:
           DUOLINGO_SESSION: ${{ secrets.DUOLINGO_SESSION }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-          CLASS_NAME: ${{ secrets.CLASS_NAME }}
+          CLASSROOM_NAME: ${{ secrets.CLASSROOM_NAME }}
+          CLASSROOM_ID: ${{ secrets.CLASSROOM_ID }}
           HEADLESS: 'true'
         run: npm start
 

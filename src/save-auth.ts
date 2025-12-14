@@ -1,55 +1,107 @@
-import { chromium } from 'playwright';
+import { chromium, BrowserContext } from 'playwright';
 import * as fs from 'fs';
+import * as path from 'path';
+import * as readline from 'readline';
+import { execSync } from 'child_process';
+
+const USER_DATA_DIR = path.join(process.cwd(), '.chrome-profile');
+
+function askQuestion(question: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
+
+function findChrome(): string {
+  const paths = [
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/snap/bin/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ];
+
+  for (const p of paths) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+
+  // Try which command
+  try {
+    const result = execSync('which google-chrome || which chromium', { encoding: 'utf-8' });
+    return result.trim();
+  } catch {
+    throw new Error('Chrome が見つかりません。Google Chrome をインストールしてください。');
+  }
+}
 
 async function saveAuth(): Promise<void> {
-  console.log('[Duolingo Session Saver]');
-  console.log('Chrome のリモートデバッグポートに接続します...\n');
-  console.log('以下の手順で Chrome を起動してください:\n');
-  console.log('1. まず現在の Chrome を完全に終了');
-  console.log('2. ターミナルで以下を実行:');
-  console.log('   google-chrome --remote-debugging-port=9222\n');
-  console.log('3. ブラウザで https://schools.duolingo.com にログイン');
-  console.log('4. ログイン完了後、このターミナルで Enter を押す\n');
+  console.log('[Duolingo Session Saver - Google ログイン対応]');
+  console.log('=========================================\n');
 
-  await new Promise<void>((resolve) => {
-    process.stdin.once('data', () => resolve());
+  const chromePath = findChrome();
+  console.log(`Chrome を使用: ${chromePath}\n`);
+  console.log('システムの Chrome を起動します。');
+  console.log('Google アカウントでログインしてください。\n');
+
+  // Use system Chrome instead of Playwright's Chromium
+  const context: BrowserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
+    headless: false,
+    executablePath: chromePath,
+    viewport: { width: 1280, height: 800 },
+    args: [
+      '--disable-blink-features=AutomationControlled',
+      '--no-sandbox',
+      '--disable-infobars',
+      '--disable-extensions',
+    ],
+    ignoreDefaultArgs: ['--enable-automation'],
   });
 
+  const page = await context.newPage();
+
   try {
-    const browser = await chromium.connectOverCDP('http://localhost:9222');
-    const contexts = browser.contexts();
+    // Navigate to Duolingo Schools
+    console.log('Duolingo Schools にアクセスしています...\n');
+    await page.goto('https://schools.duolingo.com', {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000,
+    });
 
-    if (contexts.length === 0) {
-      console.error('ブラウザコンテキストが見つかりません');
-      process.exit(1);
-    }
+    console.log('===========================================');
+    console.log('ブラウザでログインを完了してください。');
+    console.log('Google アカウントでのログインも可能です。');
+    console.log('===========================================\n');
 
-    const context = contexts[0];
-    const pages = context.pages();
+    // Wait for user to login
+    await askQuestion('ログイン完了後、Enter を押してください...');
 
-    // Find Duolingo page or use first page
-    let page = pages.find(p => p.url().includes('duolingo.com')) || pages[0];
-
-    if (!page) {
-      console.error('ページが見つかりません');
-      process.exit(1);
-    }
-
-    // Navigate to Duolingo if not already there
-    if (!page.url().includes('schools.duolingo.com')) {
-      await page.goto('https://schools.duolingo.com/classroom');
-      await page.waitForTimeout(3000);
-    }
+    // Navigate to classroom to verify login
+    await page.goto('https://schools.duolingo.com/classroom', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    });
+    await page.waitForTimeout(2000);
 
     // Check if logged in
-    if (page.url().includes('/login')) {
-      console.error('Duolingo にログインしていません。ブラウザでログインしてから再実行してください。');
-      process.exit(1);
+    const currentUrl = page.url();
+    if (currentUrl.includes('/login') || currentUrl.includes('/sign-in')) {
+      console.error('\nエラー: ログインが確認できません。');
+      console.error('ブラウザでログインを完了してから再度 Enter を押してください。');
+      await askQuestion('準備ができたら Enter を押してください...');
     }
 
-    // Get cookies
-    const cookies = await context.cookies();
-    const storageState = { cookies, origins: [] };
+    // Get storage state (cookies + localStorage)
+    const storageState = await context.storageState();
 
     const sessionJson = JSON.stringify(storageState);
     const sessionBase64 = Buffer.from(sessionJson).toString('base64');
@@ -58,17 +110,15 @@ async function saveAuth(): Promise<void> {
 
     console.log('\n✓ セッション情報を保存しました: duolingo-session.txt');
     console.log('\n設定方法:');
-    console.log('gh secret set DUOLINGO_SESSION < duolingo-session.txt');
+    console.log('  gh secret set DUOLINGO_SESSION < duolingo-session.txt');
+    console.log('\nまたは .env ファイルに追加:');
+    console.log('  DUOLINGO_SESSION=$(cat duolingo-session.txt)');
 
-    // Don't close the browser - user is still using it
   } catch (error: any) {
-    if (error.message?.includes('connect')) {
-      console.error('\nエラー: Chrome に接続できません。');
-      console.error('Chrome が --remote-debugging-port=9222 で起動していることを確認してください。');
-    } else {
-      console.error('\nエラー:', error.message);
-    }
+    console.error('\nエラー:', error.message);
     process.exit(1);
+  } finally {
+    await context.close();
   }
 }
 
