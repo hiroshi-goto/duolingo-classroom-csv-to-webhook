@@ -1,0 +1,298 @@
+app:
+  description: 'Duolingo 家族学習モニタリング - 20分未達成者に WhatsApp 通知'
+  icon: 🦉
+  icon_background: '#58CC02'
+  mode: workflow
+  name: Duolingo Family Monitor
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.5.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        sourceType: start
+        targetType: code
+      id: start-code1
+      source: 'start'
+      sourceHandle: source
+      target: 'code1'
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: code
+        targetType: code
+      id: code1-code2
+      source: 'code1'
+      sourceHandle: source
+      target: 'code2'
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: code
+        targetType: iteration
+      id: code2-iteration1
+      source: 'code2'
+      sourceHandle: source
+      target: 'iteration1'
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: iteration
+        targetType: end
+      id: iteration1-end
+      source: 'iteration1'
+      sourceHandle: source
+      target: 'end'
+      targetHandle: target
+      type: custom
+    nodes:
+    - data:
+        title: 開始
+        type: start
+        variables:
+        - label: exported_at
+          max_length: 256
+          options: []
+          required: true
+          type: text-input
+          variable: exported_at
+        - label: members
+          max_length: 48
+          options: []
+          required: true
+          type: text-input
+          variable: members
+      height: 90
+      id: 'start'
+      position:
+        x: 80
+        y: 282
+      type: custom
+      width: 242
+    - data:
+        code: |
+          import json
+
+          def main(members: str) -> dict:
+              """家族メンバー情報を定義し、CSVデータとマージ"""
+
+              # TextMeBot APIキー
+              apikey = "HpuJFXZxALeD"
+
+              # 家族メンバー情報（電話番号付き）
+              family_info = {
+                  "goto.hiroshi@gmail.com": {
+                      "name": "Hiroshi Goto",
+                      "phone": "+819024926203",
+                      "is_child": False
+                  },
+                  "g.suzuki.tomoko@gmail.com": {
+                      "name": "Tomoko Goto",
+                      "phone": "+819076654394",
+                      "is_child": False
+                  },
+                  "sara.goto.1205@gmail.com": {
+                      "name": "Sara Goto",
+                      "phone": "+819070448975",
+                      "is_child": True
+                  },
+                  "kai.goto.0511@gmail.com": {
+                      "name": "Kai Goto",
+                      "phone": "+819058389784",
+                      "is_child": True
+                  }
+              }
+
+              # GitHub Actions から受け取った members をパース
+              csv_members = json.loads(members)
+
+              # 各メンバーに電話番号を追加
+              enriched_members = []
+              for member in csv_members:
+                  email = member.get("email", "")
+                  if email in family_info:
+                      member["phone"] = family_info[email]["phone"]
+                      member["is_child"] = family_info[email]["is_child"]
+                      enriched_members.append(member)
+
+              return {
+                  "members": enriched_members,
+                  "apikey": apikey
+              }
+        code_language: python3
+        desc: 家族情報をマージ
+        outputs:
+          apikey:
+            type: string
+          members:
+            type: array[object]
+        title: 家族情報マージ
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - members
+          variable: members
+      height: 80
+      id: 'code1'
+      position:
+        x: 382
+        y: 282
+      type: custom
+      width: 242
+    - data:
+        code: |
+          import re
+
+          def main(members: list) -> dict:
+              """学習時間が20分未満のメンバーを抽出"""
+
+              def parse_study_time(time_str: str) -> int:
+                  """'0時間 25分' や '1h 30m' を分に変換"""
+                  if not time_str:
+                      return 0
+
+                  total_minutes = 0
+
+                  # 日本語形式: "X時間 Y分"
+                  jp_match = re.search(r'(\d+)\s*時間', time_str)
+                  if jp_match:
+                      total_minutes += int(jp_match.group(1)) * 60
+                  jp_min_match = re.search(r'(\d+)\s*分', time_str)
+                  if jp_min_match:
+                      total_minutes += int(jp_min_match.group(1))
+
+                  # 英語形式: "Xh Ym" or "X hours Y minutes"
+                  en_match = re.search(r'(\d+)\s*h', time_str, re.IGNORECASE)
+                  if en_match:
+                      total_minutes += int(en_match.group(1)) * 60
+                  en_min_match = re.search(r'(\d+)\s*m', time_str, re.IGNORECASE)
+                  if en_min_match:
+                      total_minutes += int(en_min_match.group(1))
+
+                  return total_minutes
+
+              # 20分未満のメンバーを抽出
+              under_20_members = []
+              for member in members:
+                  study_time = member.get("study_time", "")
+                  minutes = parse_study_time(study_time)
+
+                  if minutes < 20:
+                      member["study_minutes"] = minutes
+                      under_20_members.append(member)
+
+              return {
+                  "under_20_members": under_20_members,
+                  "count": len(under_20_members)
+              }
+        code_language: python3
+        desc: 20分未満を抽出
+        outputs:
+          under_20_members:
+            type: array[object]
+          count:
+            type: number
+        title: 学習時間チェック
+        type: code
+        variables:
+        - value_selector:
+          - code1
+          - members
+          variable: members
+      height: 80
+      id: 'code2'
+      position:
+        x: 684
+        y: 282
+      type: custom
+      width: 242
+    - data:
+        error_handle_mode: terminated
+        flatten_output: true
+        is_parallel: false
+        iterator_selector:
+        - code2
+        - under_20_members
+        output_selector: []
+        parallel_nums: 10
+        title: WhatsApp通知ループ
+        type: iteration
+        start_node_id: iteration1_start
+      height: 200
+      id: 'iteration1'
+      position:
+        x: 986
+        y: 282
+      type: custom
+      width: 400
+    - data:
+        type: iteration-start
+        title: ''
+      id: iteration1_start
+      parentId: 'iteration1'
+      position:
+        x: 24
+        y: 68
+      type: custom-iteration-start
+      width: 44
+      height: 48
+    - data:
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: ''
+          type: none
+        headers: ''
+        method: get
+        title: WhatsApp送信
+        type: http-request
+        url: 'https://api.textmebot.com/send.php?recipient={{#iteration1.item.phone#}}&apikey={{#code1.apikey#}}&text={{#iteration1.item.full_name#}}さん、今日のDuolingo学習が{{#iteration1.item.study_minutes#}}分です。あと{{20-#iteration1.item.study_minutes#}}分頑張りましょう！'
+        variables: []
+      height: 154
+      id: 'http1'
+      parentId: 'iteration1'
+      position:
+        x: 100
+        y: 50
+      type: custom
+      width: 242
+    - data:
+        outputs:
+        - value_selector:
+          - code2
+          - count
+          variable: notified_count
+        title: 終了
+        type: end
+      height: 90
+      id: 'end'
+      position:
+        x: 1446
+        y: 282
+      type: custom
+      width: 242
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
