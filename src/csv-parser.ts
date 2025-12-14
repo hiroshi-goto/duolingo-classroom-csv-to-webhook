@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import { Member, ExportData } from './types';
 
-// CSV column name mappings (English to JSON key)
 const COLUMN_MAPPINGS: Record<string, keyof Member> = {
   'Full name': 'full_name',
   'Name': 'full_name',
@@ -73,8 +72,6 @@ function parseNumber(value: string): number {
 }
 
 export function parseCSV(csvPath: string): ExportData {
-  console.log(`Parsing CSV file: ${csvPath}`);
-
   const content = fs.readFileSync(csvPath, 'utf-8');
   const lines = content.split(/\r?\n/).filter(line => line.trim());
 
@@ -82,19 +79,11 @@ export function parseCSV(csvPath: string): ExportData {
     throw new Error('CSV file is empty');
   }
 
-  // Parse header
   const headers = parseCSVLine(lines[0]);
-  console.log('CSV Headers:', headers);
-
-  // Map headers to our field names
   const headerMapping: (keyof Member | null)[] = headers.map(header => {
-    const trimmed = header.trim();
-    return COLUMN_MAPPINGS[trimmed] || null;
+    return COLUMN_MAPPINGS[header.trim()] || null;
   });
 
-  console.log('Header mapping:', headerMapping);
-
-  // Parse data rows
   const members: Member[] = [];
 
   for (let i = 1; i < lines.length; i++) {
@@ -137,8 +126,6 @@ export function parseCSV(csvPath: string): ExportData {
 
     members.push(member);
   }
-
-  console.log(`Parsed ${members.length} members`);
 
   return {
     exported_at: new Date().toISOString(),

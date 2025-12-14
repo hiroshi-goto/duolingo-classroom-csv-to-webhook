@@ -35,47 +35,28 @@ function getConfig(): Config {
 }
 
 async function main(): Promise<void> {
-  console.log('='.repeat(50));
-  console.log('Duolingo Classroom CSV to Webhook');
-  console.log(`Started at: ${new Date().toISOString()}`);
-  console.log('='.repeat(50));
+  console.log('[Duolingo CSV Exporter]');
 
   try {
-    // Load configuration
     const config = getConfig();
-    console.log(`Target class: ${config.className}`);
-    console.log(`Headless mode: ${config.headless}`);
 
-    // Step 1: Download CSV from Duolingo Classroom
-    console.log('\n[Step 1/3] Downloading CSV from Duolingo Classroom...');
+    // Step 1: Download CSV
+    console.log(`\n[1/3] Downloading CSV from class "${config.className}"...`);
     const csvPath = await downloadActivityReportCSV(config);
-    console.log(`CSV saved to: ${csvPath}`);
 
-    // Step 2: Parse CSV to JSON
-    console.log('\n[Step 2/3] Parsing CSV to JSON...');
+    // Step 2: Parse CSV
+    console.log('[2/3] Parsing CSV...');
     const exportData = parseCSV(csvPath);
-    console.log(`Parsed ${exportData.members.length} members`);
-    console.log(`Export timestamp: ${exportData.exported_at}`);
+    console.log(`  -> ${exportData.members.length} members found`);
 
-    // Log member summary
-    for (const member of exportData.members) {
-      console.log(`  - ${member.full_name} (@${member.username}): ${member.total_xp} XP, ${member.streak} day streak`);
-    }
-
-    // Step 3: Post to Webhook
-    console.log('\n[Step 3/3] Posting to Webhook...');
+    // Step 3: POST to Webhook
+    console.log('[3/3] Posting to Webhook...');
     await postToWebhook(config.webhookUrl, exportData);
 
-    console.log('\n' + '='.repeat(50));
-    console.log('SUCCESS: All steps completed!');
-    console.log(`Finished at: ${new Date().toISOString()}`);
-    console.log('='.repeat(50));
+    console.log('\nDone!');
 
   } catch (error) {
-    console.error('\n' + '='.repeat(50));
-    console.error('ERROR: Process failed!');
-    console.error(error);
-    console.error('='.repeat(50));
+    console.error('\nError:', error);
     process.exit(1);
   }
 }
