@@ -1,0 +1,26 @@
+{
+  "name": "duolingo-classroom-csv-to-webhook",
+  "version": "1.0.0",
+  "description": "Download Duolingo Classroom CSV and POST to Webhook",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "keywords": [
+    "duolingo",
+    "classroom",
+    "webhook",
+    "playwright"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}

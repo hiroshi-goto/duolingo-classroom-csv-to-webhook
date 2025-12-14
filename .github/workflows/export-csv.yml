@@ -1,0 +1,57 @@
+name: Export Duolingo Classroom CSV
+
+on:
+  schedule:
+    # Run at 07:50 UTC (= 16:50 JST)
+    - cron: '50 7 * * *'
+  workflow_dispatch:
+    # Allow manual trigger
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run export script
+        env:
+          GOOGLE_EMAIL: ${{ secrets.GOOGLE_EMAIL }}
+          GOOGLE_PASSWORD: ${{ secrets.GOOGLE_PASSWORD }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          CLASS_NAME: 'GotoFamily'
+          HEADLESS: 'true'
+        run: npm start
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ github.run_id }}
+          path: screenshots/
+          retention-days: 7
+
+      - name: Upload downloaded CSV on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: downloads-${{ github.run_id }}
+          path: downloads/
+          retention-days: 7
